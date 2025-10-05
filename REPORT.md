@@ -93,3 +93,107 @@ and sticky bit behavior, and they modify the x position into s, S, t, or T.
 
 By combining these macros with bitwise operators (&), a program can accurately determine the file’s
 type and permissions to display them in the ls -l format.
+
+
+🧩 Feature-3: ls-v1.2.0 – Column Display (Down Then Across)
+Q1. Explain the general logic for printing items in a "down then across" columnar format. Why is a simple single loop through the list of filenames insufficient for this task?
+
+Answer:
+In a “down-then-across” format, the filenames are arranged vertically first, then move horizontally to the next column.
+A simple single for loop prints all items in a single row or column, but it cannot automatically format the output into multiple aligned columns.
+To achieve proper columnar display, we must know:
+
+The terminal width (in characters)
+
+The longest filename length
+
+The total number of filenames
+
+The program performs the following steps:
+
+Store all filenames in an array using readdir().
+
+Find the longest filename length to decide how wide each column should be.
+
+Get terminal width using ioctl() to calculate how many columns fit per row.
+
+Compute rows using:
+
+𝑛
+𝑟
+𝑜
+𝑤
+𝑠
+=
+𝑡
+𝑜
+𝑡
+𝑎
+𝑙
+_
+𝑓
+𝑖
+𝑙
+𝑒
+𝑠
++
+𝑛
+𝑐
+𝑜
+𝑙
+𝑠
+−
+1
+𝑛
+𝑐
+𝑜
+𝑙
+𝑠
+nrows=
+ncols
+total_files+ncols−1
+	​
+
+
+Print row by row:
+For each row r, print:
+
+names[r], names[r + nrows], names[r + 2*nrows], ...
+
+
+until all columns are printed.
+
+This approach ensures files are displayed neatly in a grid-like structure, filling each column from top to bottom, then moving across — exactly like the real Linux ls.
+
+Q2. What is the purpose of the ioctl() system call in this context? What would be the limitations of your program if you only used a fixed-width fallback (e.g., 80 columns) instead of detecting the terminal size?
+
+Answer:
+The ioctl() system call is used to query the terminal for its current window size using the TIOCGWINSZ request.
+It provides the number of columns (character width) and rows of the terminal, allowing the program to adjust its output layout dynamically.
+
+Purpose:
+
+Automatically detects the terminal width at runtime.
+
+Ensures that filenames are arranged in the maximum possible columns without wrapping or truncation.
+
+Makes the output look clean and professional regardless of terminal resizing.
+
+Example:
+
+struct winsize ws;
+if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1)
+    term_width = 80; // fallback
+else
+    term_width = ws.ws_col;
+
+
+If only a fixed width (e.g., 80 columns) was used:
+
+On smaller terminals, text may wrap to the next line and misalign.
+
+On larger terminals, there would be excessive empty space.
+
+The output would not adapt to the user’s screen size.
+
+Therefore, ioctl() enables responsive, dynamic output — a key feature for modern command-line utilities.
