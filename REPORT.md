@@ -235,3 +235,51 @@ After argument parsing, the program `lstat()`s the target path:
 
 This strategy centralizes mode selection in one place, keeps precedence simple (long-listing highest), and makes adding future modes straightforward.
 
+
+
+## 🧩 Feature-5: ls-v1.4.0 — Alphabetical Sort
+
+### 🔹 Question 1:
+**Why is it necessary to read all directory entries into memory before you can sort them? What are the potential drawbacks of this approach for directories containing millions of files?**
+
+### 🧠 Answer:
+To perform sorting, the program must be able to **compare any two filenames freely** — meaning random access is needed.  
+This is only possible when all filenames are **stored in memory (for example, in a `char**` array)**.  
+
+If we tried to sort files one by one while reading them directly from the filesystem stream, it would be impossible because:
+- Directory streams (`readdir()`) return entries sequentially.
+- Sorting requires re-ordering based on comparisons between *all* elements.
+
+Therefore, the program first:
+1. Reads all directory entries into a dynamically allocated array of strings.  
+2. Then calls the C standard library function `qsort()` to reorder the array alphabetically.  
+3. Finally, the sorted array is passed to the display functions (default, `-l`, and `-x`).
+
+#### ⚠️ Drawbacks:
+While this approach works perfectly for small and medium directories, it can cause:
+- **High memory usage** — each filename takes heap memory, and thousands or millions of files will consume significant RAM.
+- **Performance issues** — reading, storing, and sorting millions of entries is computationally expensive (O(n log n)).
+- **Potential crash** — if available memory is exhausted due to too many directory entries.
+
+---
+
+### 🔹 Question 2:
+**Explain the purpose and signature of the comparison function required by `qsort()`. How does it work, and why must it take `const void*` arguments?**
+
+### 🧠 Answer:
+The `qsort()` function in C is a **generic sorting utility**, which can sort any kind of array — integers, floats, strings, or custom structures.  
+To achieve this flexibility, it doesn’t know the type of the array elements.  
+That’s why it requires a **custom comparison function** with the signature:
+
+```c
+int cmpstr(const void *a, const void *b);
+The parameters are typed as const void* so that qsort() can pass pointers to any data type.
+Inside the comparator, these pointers are cast back to the correct type before comparison.
+For strings, the comparator looks like this:
+
+int cmpstr(const void *a, const void *b) {
+    const char * const *sa = (const char * const *)a;
+    const char * const *sb = (const char * const *)b;
+    return strcmp(*sa, *sb);
+}
+
