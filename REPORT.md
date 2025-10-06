@@ -197,3 +197,41 @@ On larger terminals, there would be excessive empty space.
 The output would not adapt to the user’s screen size.
 
 Therefore, ioctl() enables responsive, dynamic output — a key feature for modern command-line utilities.
+
+
+## Feature-4 — ls-v1.3.0: Horizontal Column (-x)
+
+### Q1. Compare the implementation complexity of the "down then across" (vertical) printing logic versus the "across" (horizontal) printing logic. Which one requires more pre-calculation and why?
+
+**Answer:**  
+The **"down then across"** layout requires more pre-calculation than the **horizontal (across)** layout. For the down-then-across method we must:
+1. Read and store *all* filenames.
+2. Determine the longest name to compute a fixed column width.
+3. Obtain the terminal width and compute how many columns (`ncols`) fit.
+4. Compute the required number of rows (`nrows = ceil(total_files / ncols)`).
+5. Use the formula `index = r + c * nrows` to select entries for each printed row.
+
+This pre-calculation is necessary because the mapping from linear array index to printed position is not sequential; we must compute row/column counts before printing.
+
+The **horizontal** layout (row-major, `-x`) is simpler: after computing the column width and terminal width, we iterate the file list sequentially, printing each name left-to-right, keeping track of the current horizontal position and wrapping to a new line when the next entry would overflow. This requires much less precomputation — only the column width and terminal width are needed — and the algorithm is a simple single pass.
+
+Therefore, **down-then-across requires more pre-calculation** because it needs rows/columns determination and index mapping before printing.
+
+---
+
+### Q2. Describe the strategy you used in your code to manage the different display modes (-l, -x, default).
+
+**Answer:**  
+I used a small enumeration `display_mode_t` with values `MODE_DEFAULT`, `MODE_LONG`, and `MODE_HORIZONTAL`. The `getopt()` loop recognizes options `-l` and `-x`:
+
+- If `-l` is present, the mode is set to `MODE_LONG` (long-listing) — this takes precedence.
+- If `-x` is present and `-l` is not set, the mode is set to `MODE_HORIZONTAL`.
+- If neither is present, the mode remains `MODE_DEFAULT` (down-then-across).
+
+After argument parsing, the program `lstat()`s the target path:
+- If mode is `MODE_LONG` and the path is a directory, call `print_long_listing()`; if it is a single file, call `print_long_single()`.
+- If mode is `MODE_HORIZONTAL`, call `print_horizontal_path()` (which handles files vs directories).
+- If mode is `MODE_DEFAULT`, call `print_simple()` (down-then-across).
+
+This strategy centralizes mode selection in one place, keeps precedence simple (long-listing highest), and makes adding future modes straightforward.
+
