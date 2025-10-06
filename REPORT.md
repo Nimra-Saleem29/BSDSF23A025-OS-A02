@@ -283,3 +283,126 @@ int cmpstr(const void *a, const void *b) {
     return strcmp(*sa, *sb);
 }
 
+
+:
+
+📘 Report: Feature-6 (ls-v1.5.0 – Colorized Output Based on File Type)
+❓ Question 1:
+
+How do ANSI escape codes work to produce color in a standard Linux terminal? Show the specific code sequence for printing text in green.
+
+💡 Answer:
+
+ANSI escape codes are special sequences of characters that control how text appears in the terminal — including colors, boldness, and styles.
+They begin with the escape character \033 (or \x1b), followed by [ and a set of numeric parameters, ending with the letter m.
+
+General format:
+
+\033[<attribute>;<foreground>;<background>m
+
+
+attribute: Controls style (e.g., 0 = normal, 1 = bold)
+
+foreground: Sets text color (30–37 = normal colors, 90–97 = bright colors)
+
+background: Sets background color (40–47 = normal, 100–107 = bright)
+
+Example: Printing green text
+
+printf("\033[0;32mThis text is green!\033[0m\n");
+
+
+Explanation:
+
+\033[0;32m → Turns on green text (0 = normal style, 32 = green color)
+
+\033[0m → Resets color to default after printing
+
+❓ Question 2:
+
+To color an executable file, you need to check its permission bits. Explain which bits in the st_mode field you need to check to determine if a file is executable by the owner, group, or others.
+
+💡 Answer:
+
+Every file in Linux has a set of permission bits stored in its metadata, accessible through the st_mode field (obtained using the stat() system call).
+To check if a file is executable, we look at the execute bits for the owner, group, and others.
+
+Permission Type	Constant	Binary Mask	Description
+Owner Execute	S_IXUSR	0100	Executable by file owner
+Group Execute	S_IXGRP	0010	Executable by group members
+Others Execute	S_IXOTH	0001	Executable by anyone
+
+Example Check in C:
+
+if (st.st_mode & S_IXUSR || st.st_mode & S_IXGRP || st.st_mode & S_IXOTH)
+    printf("\033[1;32m%s\033[0m\n", filename); // Print executable files in green
+
+
+Explanation:
+
+S_IXUSR, S_IXGRP, and S_IXOTH are macros that represent the execute permission bits.
+
+If any of these bits are set, the file is executable.
+
+The code above prints executable filenames in green using ANSI color codes.
+
+
+## 🧩 Feature-7: ls-v1.6.0 — Recursive Listing (-R)
+
+### **Question 1:**
+In a recursive function, what is a "base case"?  
+In the context of your recursive `ls`, what is the base case that stops the recursion from continuing forever?
+
+### **Answer:**
+A **base case** in recursion is the condition that stops further recursive calls.  
+Without a base case, the function would call itself indefinitely, causing a stack overflow.  
+
+In the context of the recursive `ls`:
+- The base case occurs when the directory has **no subdirectories** or when it encounters `"."` or `".."`.  
+- The program checks:
+  ```c
+  if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+      continue;
+This ensures that the function does not recurse into the current or parent directories, preventing infinite recursion.
+
+Additionally, directories that cannot be opened (e.g., permission denied) are gracefully skipped, serving as another natural base case.Q2: To color an executable file, you need to check its permission bits. Explain which bits in the st_mode field you need to check to determine if a file is executable by the owner, group, or others.
+
+Answer:
+To determine if a file is executable, we use the st_mode field of the stat structure.
+The following bits indicate executable permissions:
+
+S_IXUSR → executable by owner
+
+S_IXGRP → executable by group
+
+S_IXOTH → executable by others
+
+If any of these bits are set, the file is executable by that category.
+
+Example Code:
+
+#include <stdio.h>
+#include <sys/stat.h>
+
+int main() {
+    struct stat fileStat;
+    const char *filename = "example";
+
+    if (stat(filename, &fileStat) == 0) {
+        if (fileStat.st_mode & S_IXUSR)
+            printf("Owner can execute\n");
+        if (fileStat.st_mode & S_IXGRP)
+            printf("Group can execute\n");
+        if (fileStat.st_mode & S_IXOTH)
+            printf("Others can execute\n");
+    } else {
+        perror("stat");
+    }
+
+    return 0;
+}
+
+
+Explanation:
+The st_mode field stores file type and permission bits.
+By using bitwise AND (&) with these macros, we can check whether the executable permission is granted for the owner, group, or others.
