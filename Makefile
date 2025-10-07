@@ -13,10 +13,10 @@ TARGET = $(BIN_DIR)/ls
 all: $(TARGET)
 
 $(OBJ_DIR):
-	mkdir -p $(OBJ_DIR)
+	@mkdir -p $(OBJ_DIR)
 
 $(BIN_DIR):
-	mkdir -p $(BIN_DIR)
+	@mkdir -p $(BIN_DIR)
 
 $(OBJ): $(SRC) | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $(SRC) -o $(OBJ)
